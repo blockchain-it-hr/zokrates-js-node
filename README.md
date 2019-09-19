@@ -1,9 +1,7 @@
-
-
 # zokrates.js
 JavaScript bindings for [ZoKrates](https://github.com/Zokrates/ZoKrates) project. The goal of this project is to provide ZoKrates JavaScript API supporting both node.js and the web. ZoKrates is a toolbox for zkSNARKs on Ethereum. It helps you use verifiable computation in your DApp, from the specification of your program in a high level language to generating proofs of computation to verifying those proofs in Solidity.
 
-## Installation
+## Package
 Install zokrates.js with [npm](https://www.npmjs.com/package/zokrates.js):
 
 ```bash
@@ -12,10 +10,23 @@ npm install zokrates.js
 
 ### Usage
 ```js
-import { initialize } from 'zokrates-js'
+import * as zokrates from 'zokrates-js'
+
+function importResolver(location, path) {
+  // implement your resolving logic here
+  return { 
+    source: "def main() -> (): return", 
+    location: path 
+  };
+}
+
+zokrates.initialize(importResolver).then(() => {
+    // we have to initialize wasm module before calling api functions
+    zokrates.compile("def main() -> (): return")
+});
 ```
 
-## Prerequisite
+## Installation
 Install rustup and wasm-pack:
 
 ```bash
