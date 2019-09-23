@@ -19,7 +19,8 @@
   "scripts": {
     "cargo:build": "cargo build --target=wasm32-unknown-unknown",
     "wasm-pack:build": "wasm-pack build --out-name index --release --target nodejs",
-    "build": "npm install && rimraf pkg && npm run wasm-pack:build && gulp stdlib",
+    "build": "npm install && rimraf pkg && npm run stdlib && npm run wasm-pack:build && gulp stdlib",
+    "stdlib": "sh scripts/get_stdlib.sh",
     "publish": "npm publish"
   },
   "devDependencies": {
