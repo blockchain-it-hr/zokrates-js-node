@@ -1,0 +1,12 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node 
+    working_directory: ~/zokrates
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true 
+      - run: npm run build
+      - run: ./scripts/publish.sh
