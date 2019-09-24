@@ -1,6 +1,8 @@
 # zokrates-js-node
 JavaScript bindings for [ZoKrates](https://github.com/Zokrates/ZoKrates) project. The goal of this project is to provide ZoKrates JavaScript API supporting both node.js and the web. ZoKrates is a toolbox for zkSNARKs on Ethereum. It helps you use verifiable computation in your DApp, from the specification of your program in a high level language to generating proofs of computation to verifying those proofs in Solidity.
 
+[![CircleCI](https://circleci.com/gh/blockchain-it-hr/zokrates-js-node/tree/master.svg?style=svg)](https://circleci.com/gh/blockchain-it-hr/zokrates-js-node/tree/master)
+
 ## Package
 Install zokrates-js-node with [npm](https://www.npmjs.com/package/zokrates-js-node):
 
