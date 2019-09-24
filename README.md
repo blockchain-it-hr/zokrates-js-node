@@ -8,7 +8,17 @@ Install zokrates-js-node with [npm](https://www.npmjs.com/package/zokrates-js-no
 npm install zokrates-js-node
 ```
 
-For web and bundlers, check this [repository](https://github.com/blockchain-it-hr/zokrates-js).
+For bundlers, check this [repository](https://github.com/blockchain-it-hr/zokrates-js).
+
+## API
+| Function | Signature |
+| ------ | ------ |
+| initialize | initialize(callback: (location: string, path: string) => ResolverResult): Promise\<void\> |
+| compile | compile(source: string, location: string): Uint8Array |
+| computeWitness | computeWitness(program: Uint8Array, args: string[]): string |
+| setup | setup(program: Uint8Array): [string, Uint8Array] |
+| exportSolidityVerifier | exportSolidityVerifier(verifyingKey: string, isAbiv2: boolean): string |
+| generateProof | generateProof(program: Uint8Array, witness: string, provingKey: Uint8Array): string |
 
 ### Usage
 ```js
