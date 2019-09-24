@@ -2,7 +2,7 @@
   "name": "zokrates-js-node",
   "main": "index.js",
   "author": "Darko Macesic <darem966@gmail.com>, Edi Sinovcic <edi@blockchain-it.hr>",
-  "version": "1.0.3",
+  "version": "1.0.8",
   "keywords": [
     "zokrates",
     "wasm-bindgen",
@@ -16,16 +16,15 @@
     "lib"
   ],
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/blockchain-it-hr/zokrates-js-node"
+    "type": "git",
+    "url": "https://github.com/blockchain-it-hr/zokrates-js-node"
   },
   "types": "lib/index.d.ts",
   "scripts": {
     "cargo:build": "cargo build --target=wasm32-unknown-unknown",
     "wasm-pack:build": "wasm-pack build --out-name index --release --target nodejs",
     "build": "npm install && rimraf pkg && npm run stdlib && npm run wasm-pack:build && gulp stdlib",
-    "stdlib": "sh scripts/get_stdlib.sh",
-    "publish": "npm run build && npm version patch && npm publish"
+    "stdlib": "sh scripts/get_stdlib.sh"
   },
   "devDependencies": {
     "dree": "^2.1.10",

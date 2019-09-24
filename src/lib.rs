@@ -22,7 +22,7 @@ impl ResolverResult {
 
 #[wasm_bindgen]
 extern "C" {
-    fn resolve(l: String, p: String) -> ResolverResult;
+    fn resolve(l: String, p: String) -> Option<ResolverResult>;
 
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
@@ -34,8 +34,11 @@ pub fn compile(source: JsValue, location: JsValue) -> Result<JsValue, JsValue> {
         l: String,
         p: String,
     ) -> Result<(String, String), zokrates_core::imports::Error> {
-        let res = resolve(l, p);
-        Ok((res.source, res.location))
+        let result = resolve(l, p.clone());
+        match result {
+            Some(res) => Ok((res.source, res.location)),
+            None => Err(zokrates_core::imports::Error::new(String::from(format!("Unable to resolve {}", p))))
+        }
     };
 
     let program_flattened: Result<ir::Prog<FieldPrime>, CompileErrors> = compile_core(
