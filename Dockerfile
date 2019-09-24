@@ -1,12 +1,7 @@
 FROM blockchainit/rust-wasm-env:latest
-ARG WORKSPACE_DIR=/usr/src/app
+
+ARG WORKSPACE_DIR=/build
 WORKDIR ${WORKSPACE_DIR}
-ARG USER
-ARG PASS
-ARG EMAIL
-ENV USER=${USER}
-ENV PASS=${PASS}
-ENV EMAIL=${EMAIL}
+
 COPY . .
-RUN npm run build 
-RUN sh scripts/publish.sh
+RUN npm run build
