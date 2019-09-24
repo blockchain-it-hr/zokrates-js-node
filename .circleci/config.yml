@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  build_docker:
     docker:
       - image: circleci/node 
     working_directory: ~/zokrates
@@ -9,11 +9,26 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true 
       - run: ./scripts/build.sh
+  build_npmjs:
+    docker:
+      - image: circleci/node 
+    working_directory: ~/zokrates
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true 
+      - run: ./scripts/publish.sh
 workflows:
   version: 2
   build:
     jobs:
-      - build:
+      - build_docker:
+          context: zokrates
+          filters:
+            branches:
+              only: 
+              - master
+      - build_npmjs:
           context: zokrates
           filters:
             branches:
