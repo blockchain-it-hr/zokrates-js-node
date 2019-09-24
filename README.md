@@ -8,7 +8,7 @@ Install zokrates-js-node with [npm](https://www.npmjs.com/package/zokrates-js-no
 npm install zokrates-js-node
 ```
 
-For web and bundlers, check this [repository](https://github.com/blockchain-it-hr/zokrates-js).
+For bundlers, check this [repository](https://github.com/blockchain-it-hr/zokrates-js).
 
 ## API
 | Function | Signature |
