@@ -9,7 +9,7 @@ const root_  = './stdlib';
 const output = 'stdlib.json';
 
 const options = {
-    extensions: ['code']
+    extensions: ['zok']
 };
 
 gulp.task('stdlib', function (done) {

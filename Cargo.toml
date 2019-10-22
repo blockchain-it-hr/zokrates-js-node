@@ -15,8 +15,9 @@ serde = "^1.0.59"
 serde_derive = "^1.0.59"
 bincode = "1.1.4"
 wasm-bindgen = { version = "0.2.46", features = ["serde-serialize"] }
-zokrates_core = { git = "https://github.com/dark64/ZoKrates", branch = "wasm-prover-simple-resolver" }
-zokrates_field = { git = "https://github.com/dark64/ZoKrates", branch = "wasm-prover-simple-resolver" }
+zokrates_core = { git = "https://github.com/dark64/ZoKrates", branch = "wasm-friendly", default-features = false, features = ["wasm"] }
+zokrates_field = { git = "https://github.com/dark64/ZoKrates", branch = "wasm-friendly" }
+zokrates_abi = { git = "https://github.com/dark64/ZoKrates", branch = "wasm-friendly" }
 
 [target."cfg(debug_assertions)".dependencies]
 console_error_panic_hook = "0.1.5"
