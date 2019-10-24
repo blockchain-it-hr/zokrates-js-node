@@ -3,18 +3,18 @@ jobs:
   build:
     docker:
       - image: blockchainit/rust-wasm-env:latest
-    working_directory: ~/zokrates-js
+    working_directory: ~/zokrates-js-node
     steps:
       - checkout
       - run:
-          name: Generate cargo lockfile          command: npm run build
-
+          name: Generate cargo lockfile
           command: cargo generate-lockfile
       - restore_cache:
           keys:
             - v1-cargo-cache-{{ arch }}-{{ checksum "Cargo.lock" }}
       - run: 
           name: Run build
+          command: npm run build
       - save_cache:
           paths:
             - /usr/local/cargo/registry
