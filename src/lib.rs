@@ -1,123 +1,153 @@
+use bincode::{deserialize, serialize};
+use serde::{Deserialize, Serialize};
+use serde_json::to_string_pretty;
 use wasm_bindgen::prelude::*;
-use zokrates_core::compile::{ compile as compile_core, CompileErrors };
+use zokrates_abi::{parse_strict, Encode, Decode, Inputs};
+use zokrates_core::compile::{compile as core_compile, CompilationArtifacts};
+use zokrates_core::imports::Error;
 use zokrates_core::ir;
-use zokrates_field::field::{ FieldPrime };
 use zokrates_core::proof_system::{self, ProofSystem};
-use zokrates_abi::{ parse_strict, Inputs, Encode };
+use zokrates_core::typed_absy::abi::Abi;
+use zokrates_core::typed_absy::{types::Signature};
+use zokrates_field::field::FieldPrime;
 
-extern crate serde_derive;
-
-#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct ResolverResult {
     source: String,
     location: String,
 }
 
-#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
+pub struct CompilationResult {
+    program: Vec<u8>,
+    abi: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ComputationResult {
+    witness: String,
+    output: String,
+}
+
 impl ResolverResult {
-    #[wasm_bindgen]
-    pub fn new(source: String, location: String) -> Self {
-        ResolverResult { source, location }
+    fn into_tuple(self) -> (String, String) {
+        (self.source, self.location)
     }
 }
 
-#[wasm_bindgen]
-extern "C" {
-    fn resolve(l: String, p: String) -> Option<ResolverResult>;
-
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
+#[inline]
+fn deserialize_program(value: &Vec<u8>) -> Result<ir::Prog<FieldPrime>, JsValue> {
+    deserialize(&value)
+        .map_err(|err| JsValue::from_str(&format!("Could not deserialize program: {}", err)))
 }
 
-fn deserialize_program(input: &JsValue) -> ir::Prog<FieldPrime> {
-    let vec: Vec<u8> = input.into_serde().unwrap();
-    bincode::deserialize(&vec).unwrap()
+#[inline]
+fn serialize_program(program: &ir::Prog<FieldPrime>) -> Result<Vec<u8>, JsValue> {
+    serialize(program)
+        .map_err(|err| JsValue::from_str(&format!("Could not serialize program: {}", err)))
 }
 
 #[wasm_bindgen]
-pub fn compile(source: JsValue, location: JsValue) -> Result<JsValue, JsValue> {
-    fn resolve_closure<'a>(
-        l: String,
-        p: String,
-    ) -> Result<(String, String), zokrates_core::imports::Error> {
-        let result = resolve(l, p.clone());
-        match result {
-            Some(res) => Ok((res.source, res.location)),
-            None => Err(zokrates_core::imports::Error::new(String::from(format!("Unable to resolve {}", p))))
+pub fn compile(
+    source: JsValue,
+    location: JsValue,
+    resolve: &js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let closure = |l: String, p: String| {
+        let value = resolve
+            .call2(&JsValue::UNDEFINED, &l.into(), &p.clone().into())
+            .map_err(|_| {
+                Error::new(format!(
+                    "Error thrown in callback: Could not resolve `{}`",
+                    p
+                ))
+            })?;
+
+        if value.is_null() || value.is_undefined() {
+            Err(Error::new(format!("Could not resolve `{}`", p)))
+        } else {
+            let result: ResolverResult = value.into_serde().unwrap();
+            Ok(result.into_tuple())
         }
     };
 
-    let program_flattened: Result<ir::Prog<FieldPrime>, CompileErrors> = compile_core(
-        source.as_string().unwrap(), 
-        location.as_string().unwrap(), 
-        Some(resolve_closure)
-    );
+    let artifacts: CompilationArtifacts<FieldPrime> = core_compile(
+        source.as_string().unwrap(),
+        location.as_string().unwrap(),
+        Some(&closure),
+    )
+    .map_err(|ce| JsValue::from_str(&format!("{}", ce)))?;
 
-    match program_flattened {
-        Ok(p) => {
-            let data: Vec<u8> = bincode::serialize(&p).unwrap();
-            Ok(JsValue::from_serde(&data).unwrap())
-        }
-        Err(ce) => Err(JsValue::from_str(&format!("{}", ce)))
-    }
+    let result = CompilationResult {
+        program: serialize_program(artifacts.prog())?,
+        abi: to_string_pretty(artifacts.abi()).unwrap(),
+    };
+
+    Ok(JsValue::from_serde(&result).unwrap())
 }
 
 #[wasm_bindgen]
-pub fn compute_witness(program: JsValue, args: JsValue) -> Result<JsValue, JsValue> {
-    let program_flattened = deserialize_program(&program);
+pub fn compute_witness(artifacts: JsValue, args: JsValue) -> Result<JsValue, JsValue> {
+    let result: CompilationResult = artifacts.into_serde().unwrap();
+    let program_flattened = deserialize_program(&result.program)?;
 
-    let input: String = args.as_string().unwrap();
-    let signature = program_flattened.signature.clone();
+    let abi: Abi = serde_json::from_str(result.abi.as_str())
+        .map_err(|err| JsValue::from_str(&format!("Could not deserialize abi: {}", err)))?;
 
-    let arguments = parse_strict(&input, signature.inputs)
-                        .map(|parsed| Inputs::Abi(parsed))
-                        .map_err(|why| why.to_string());
+    let signature: Signature = abi.signature();
+    let input = args.as_string().unwrap();
 
-    match arguments {   
-        Ok(inputs) => {
-            let witness = program_flattened.execute(&inputs.encode());
-            match witness {
-                Ok(witness) => Ok(JsValue::from_str(&format!("{}", witness))),
-                Err(error) => Err(JsValue::from_str(&format!("Execution failed: {}", error)))
-            }
-        },
-        Err(err) => Err(JsValue::from_str(&format!("{}", err)))
-    }
+    let inputs = parse_strict(&input, signature.inputs)
+        .map(|parsed| Inputs::Abi(parsed))
+        .map_err(|why| JsValue::from_str(&format!("{}", why.to_string())))?;
 
+    let witness = program_flattened
+        .execute(&inputs.encode())
+        .map_err(|err| JsValue::from_str(&format!("Execution failed: {}", err)))?;
+
+    let return_values: serde_json::Value =
+        zokrates_abi::CheckedValues::decode(witness.return_values(), signature.outputs).into();
+
+    let result = ComputationResult {
+        witness: format!("{}", witness),
+        output: to_string_pretty(&return_values).unwrap()
+    };
+
+    Ok(JsValue::from_serde(&result).unwrap())
 }
 
 #[wasm_bindgen]
-pub fn setup(program: JsValue) -> JsValue {
-    let program_flattened = deserialize_program(&program);
-    let proof = proof_system::G16{}.setup_c(program_flattened);
-    JsValue::from_serde(&proof).unwrap()
+pub fn setup(program: JsValue) -> Result<JsValue, JsValue> {
+    let input: Vec<u8> = program.into_serde().unwrap();
+    let program_flattened = deserialize_program(&input)?;
+    let keypair = proof_system::G16 {}.setup(program_flattened);
+    Ok(JsValue::from_serde(&keypair).unwrap())
 }
 
 #[wasm_bindgen]
 pub fn export_solidity_verifier(vk: JsValue, is_abiv2: JsValue) -> JsValue {
-    let verifier = proof_system::G16{}.export_solidity_verifier_c(
-        vk.as_string().unwrap(), 
-        is_abiv2.as_bool().unwrap()
-    );
+    let verifier = proof_system::G16 {}
+        .export_solidity_verifier(vk.as_string().unwrap(), is_abiv2.as_bool().unwrap());
     JsValue::from_str(verifier.as_str())
 }
 
 #[wasm_bindgen]
-pub fn generate_proof(program: JsValue, witness: JsValue, pk: JsValue) -> JsValue {
-    let program_flattened = deserialize_program(&program);
+pub fn generate_proof(program: JsValue, witness: JsValue, pk: JsValue) -> Result<JsValue, JsValue> {
+    let input: Vec<u8> = program.into_serde().unwrap();
+    let program_flattened = deserialize_program(&input)?;
 
-    let str_witness: String = witness.as_string().unwrap();
-    let witness_out: ir::Witness<FieldPrime> = ir::Witness::read(str_witness.as_bytes()).unwrap();
-        
-    let mut proving_key: Vec<u8> = pk.into_serde().unwrap();
+    let str_witness = witness.as_string().unwrap();
+    let ir_witness: ir::Witness<FieldPrime> = ir::Witness::read(str_witness.as_bytes())
+        .map_err(|err| JsValue::from_str(&format!("Could not read witness: {}", err)))?;
 
-    let proof: String = proof_system::G16{}.generate_proof_c(program_flattened, witness_out, proving_key.as_mut_slice());
-    JsValue::from_str(proof.as_str())
+    let proving_key: Vec<u8> = pk.into_serde().unwrap();
+    let proof = proof_system::G16 {}.generate_proof(program_flattened, ir_witness, proving_key);
+
+    Ok(JsValue::from_str(proof.as_str()))
 }
 
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
-
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
