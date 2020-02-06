@@ -1,3 +1,6 @@
+# DEPRECATED
+Please use native version of ZoKrates for Desktop.
+
 # zokrates-js-node
 [ZoKrates](https://github.com/Zokrates/ZoKrates) JavaScript bindings for node platform.
 
